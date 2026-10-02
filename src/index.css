@@ -11,7 +11,6 @@ html, body, #root {
   overflow-x: hidden;
 }
 
-/* 🌸 COZY SAKURA GRADIENT 🌸 */
 .pool {
   position: relative;
   min-height: 100vh;
@@ -21,11 +20,75 @@ html, body, #root {
   justify-content: center;
   padding: 60px 20px 140px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 15%, #fff5ec 0%, #ffe4e1 35%, #ffd1c1 65%, #f8b8c4 100%);
+  transition: background 2s ease;
 }
 
-/* Soft floating glow behind the seal */
+/* ☀️ TIME OF DAY — BACKGROUNDS ☀️ */
+.pool.time-morning {
+  background: radial-gradient(circle at 50% 20%, #fff8ee 0%, #ffe4e1 40%, #ffd1c1 75%, #ffb8c4 100%);
+}
+.pool.time-afternoon {
+  background: radial-gradient(circle at 50% 25%, #fff4e6 0%, #ffe0d0 40%, #ffc9b8 75%, #f8b0a0 100%);
+}
+.pool.time-evening {
+  background: radial-gradient(circle at 50% 30%, #ffd6c9 0%, #ffb8a8 40%, #e88b9e 75%, #b86188 100%);
+}
+.pool.time-night {
+  background: radial-gradient(circle at 50% 35%, #4a3a5c 0%, #3a2a4a 40%, #2a1f3a 75%, #1a1230 100%);
+  color: #e8d8e8;
+}
+.pool.time-night .speech {
+  background: rgba(60, 40, 70, 0.75);
+  border-color: rgba(200, 160, 200, 0.4);
+  color: #f0e0f0;
+}
+.pool.time-night .speech::after {
+  background: rgba(60, 40, 70, 0.75);
+  border-color: rgba(200, 160, 200, 0.4);
+}
+.pool.time-night .actions button,
+.pool.time-night .name-prompt input,
+.pool.time-night .talk-prompt input {
+  background: rgba(80, 55, 95, 0.6);
+  border-color: rgba(200, 160, 200, 0.5);
+  color: #f0e0f0;
+}
+.pool.time-night .actions button:hover {
+  background: rgba(120, 80, 140, 0.75);
+  border-color: rgba(240, 200, 240, 0.8);
+}
+.pool.time-night .name-prompt button,
+.pool.time-night .talk-prompt button {
+  background: linear-gradient(135deg, #b894d0 0%, #9a70b8 100%);
+  box-shadow: 0 8px 22px rgba(150, 100, 180, 0.5);
+}
+.pool.time-night .footer { color: rgba(232, 216, 232, 0.4); }
+.pool.time-night .speech { color: #f0e0f0; }
+
+/* ✨ STARS (only at night) ✨ */
+.pool.time-night::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 27% 8%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 45% 22%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 63% 12%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 82% 30%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 91% 18%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 18% 40%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 78% 55%, rgba(255,255,255,0.8), transparent);
+  animation: stars-twinkle 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes stars-twinkle {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
 .pool::before {
   content: "";
   position: absolute;
@@ -38,14 +101,14 @@ html, body, #root {
   transform: translate(-50%, -50%);
   pointer-events: none;
   animation: glow-pulse 6s ease-in-out infinite;
+  z-index: 0;
 }
-
 @keyframes glow-pulse {
   0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
   50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
 }
 
-/* 🌸 FLOATING BUBBLES 🌸 */
+/* 🫧 BUBBLES 🫧 */
 .bubbles {
   position: absolute;
   inset: 0;
@@ -53,7 +116,6 @@ html, body, #root {
   pointer-events: none;
   z-index: 1;
 }
-
 .bubble {
   position: absolute;
   bottom: -60px;
@@ -63,7 +125,6 @@ html, body, #root {
   animation: bubble-rise linear infinite;
   opacity: 0.7;
 }
-
 @keyframes bubble-rise {
   0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
   10%  { opacity: 0.75; }
@@ -71,7 +132,7 @@ html, body, #root {
   100% { transform: translateY(-105vh) translateX(-20px) scale(0.9); opacity: 0; }
 }
 
-/* 💬 SPEECH BUBBLE 💬 */
+/* 💬 SPEECH 💬 */
 .speech {
   position: relative;
   z-index: 3;
@@ -92,12 +153,10 @@ html, body, #root {
   backdrop-filter: blur(14px);
   animation: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
 @keyframes bounce-in {
   0%   { opacity: 0; transform: translateY(12px) scale(0.96); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .speech::after {
   content: "";
   position: absolute;
@@ -112,21 +171,19 @@ html, body, #root {
   border-bottom-right-radius: 4px;
 }
 
-/* 🦭 THE SEAL 🦭 */
+/* 🦭 SEAL 🦭 */
 .seal-wrap {
   position: relative;
   z-index: 3;
   animation: seal-float 4s ease-in-out infinite;
   cursor: pointer;
 }
-
 @keyframes seal-float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   25%      { transform: translateY(-10px) rotate(-1deg); }
   50%      { transform: translateY(-16px) rotate(0deg); }
   75%      { transform: translateY(-8px) rotate(1deg); }
 }
-
 .seal {
   display: block;
   width: min(420px, 78vw);
@@ -136,12 +193,9 @@ html, body, #root {
   -webkit-user-drag: none;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.seal-wrap:active .seal { transform: scale(0.94); }
 
-.seal-wrap:active .seal {
-  transform: scale(0.94);
-}
-
-/* 🎀 ACTION BUTTONS 🎀 */
+/* 🎀 BUTTONS 🎀 */
 .actions {
   display: flex;
   gap: 14px;
@@ -150,7 +204,6 @@ html, body, #root {
   justify-content: center;
   z-index: 3;
 }
-
 .actions button {
   padding: 14px 28px;
   border: 2px solid rgba(255, 180, 200, 0.7);
@@ -167,16 +220,11 @@ html, body, #root {
   box-shadow: 0 6px 20px rgba(255, 180, 200, 0.35);
   backdrop-filter: blur(10px);
 }
-
 .actions button:hover {
   transform: translateY(-3px);
   background: #fff;
   border-color: #ff9db5;
   box-shadow: 0 10px 28px rgba(255, 160, 180, 0.5);
-}
-
-.actions button:active {
-  transform: translateY(-1px) scale(0.97);
 }
 
 /* 🌸 NAME PROMPT 🌸 */
@@ -188,8 +236,8 @@ html, body, #root {
   flex-wrap: wrap;
   justify-content: center;
 }
-
-.name-prompt input {
+.name-prompt input,
+.talk-prompt input {
   padding: 15px 26px;
   border: 2px solid rgba(255, 180, 200, 0.7);
   border-radius: 100px;
@@ -199,21 +247,11 @@ html, body, #root {
   font-size: 14px;
   font-weight: 500;
   outline: none;
-  min-width: 220px;
   box-shadow: 0 6px 20px rgba(255, 180, 200, 0.3);
-  transition: all 0.3s;
 }
-
-.name-prompt input:focus {
-  border-color: #ff9db5;
-  box-shadow: 0 8px 24px rgba(255, 160, 180, 0.45);
-}
-
-.name-prompt input::placeholder {
-  color: rgba(122, 74, 85, 0.45);
-}
-
-.name-prompt button {
+.name-prompt input { min-width: 220px; }
+.name-prompt button,
+.talk-prompt button {
   padding: 15px 28px;
   border: none;
   border-radius: 100px;
@@ -226,15 +264,10 @@ html, body, #root {
   text-transform: uppercase;
   cursor: pointer;
   box-shadow: 0 8px 22px rgba(255, 140, 170, 0.5);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.3s;
 }
-
-.name-prompt button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(255, 140, 170, 0.6);
-}
-
-/* 💭 TALK INPUT 💭 */
+.name-prompt button:hover,
+.talk-prompt button:hover { transform: translateY(-3px); }
 .talk-prompt {
   position: fixed;
   bottom: 40px;
@@ -245,51 +278,9 @@ html, body, #root {
   width: min(560px, 90vw);
   z-index: 20;
 }
+.talk-prompt input { flex: 1; }
 
-.talk-prompt input {
-  flex: 1;
-  padding: 15px 26px;
-  border: 2px solid rgba(255, 180, 200, 0.7);
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  outline: none;
-  box-shadow: 0 10px 30px rgba(255, 160, 180, 0.4);
-  backdrop-filter: blur(14px);
-}
-
-.talk-prompt input:focus {
-  border-color: #ff9db5;
-}
-
-.talk-prompt input::placeholder {
-  color: rgba(122, 74, 85, 0.45);
-}
-
-.talk-prompt button {
-  padding: 15px 30px;
-  border: none;
-  border-radius: 100px;
-  background: linear-gradient(135deg, #ffb5c5 0%, #ff8fa8 100%);
-  color: #fff;
-  font-family: "Quicksand", sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(255, 140, 170, 0.5);
-  transition: all 0.3s;
-}
-
-.talk-prompt button:hover {
-  transform: translateY(-2px);
-}
-
-/* ✨ CURSOR SPARKLE ✨ */
+/* ✨ CURSOR SPARKLES ✨ */
 .sparkle {
   position: fixed;
   pointer-events: none;
@@ -298,7 +289,6 @@ html, body, #root {
   user-select: none;
   animation: sparkle-fade 0.9s ease-out forwards;
 }
-
 @keyframes sparkle-fade {
   0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.6) rotate(0deg); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4) rotate(120deg) translateY(-20px); }
@@ -318,10 +308,201 @@ html, body, #root {
   z-index: 5;
 }
 
+/* 📅 AGE BADGE (top left) 📅 */
+.age-badge {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid rgba(255, 180, 200, 0.6);
+  color: #7a4a55;
+  font-family: "Quicksand", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
+}
+.pool.time-night .age-badge {
+  background: rgba(80, 55, 95, 0.5);
+  border-color: rgba(200, 160, 200, 0.5);
+  color: #f0e0f0;
+}
+
+/* 🔊 SOUND TOGGLE (top right) 🔊 */
+.sound-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid rgba(255, 180, 200, 0.6);
+  color: #7a4a55;
+  font-size: 18px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
+  transition: all 0.3s;
+  display: grid;
+  place-items: center;
+}
+.sound-btn:hover { transform: scale(1.08); }
+.sound-btn.is-on { background: #ffd1dd; }
+.pool.time-night .sound-btn {
+  background: rgba(80, 55, 95, 0.5);
+  border-color: rgba(200, 160, 200, 0.5);
+}
+
+/* 💌 LETTER BUTTON (bottom left) 💌 */
+.letter-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+  padding: 12px 20px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1.5px solid rgba(255, 180, 200, 0.7);
+  color: #7a4a55;
+  font-family: "Quicksand", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
+  transition: all 0.3s;
+  animation: letter-pulse 3s ease-in-out infinite;
+}
+.letter-btn:hover { transform: translateY(-3px); }
+@keyframes letter-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25); }
+  50%      { box-shadow: 0 4px 24px rgba(255, 140, 170, 0.6); }
+}
+.pool.time-night .letter-btn {
+  background: rgba(80, 55, 95, 0.5);
+  border-color: rgba(200, 160, 200, 0.5);
+  color: #f0e0f0;
+}
+
+/* 💌 LETTER MODAL 💌 */
+.letter-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(60, 30, 45, 0.5);
+  backdrop-filter: blur(12px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: fade-in 0.3s ease;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.letter-paper {
+  position: relative;
+  max-width: 520px;
+  width: 100%;
+  padding: 48px 40px;
+  background:
+    linear-gradient(180deg, #fffbf5 0%, #fdf5e8 100%);
+  border-radius: 8px;
+  box-shadow: 0 30px 80px rgba(80, 40, 60, 0.4);
+  font-family: "Cormorant Garamond", serif;
+  color: #4a3540;
+  animation: paper-open 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(180, 140, 160, 0.3);
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(180, 150, 170, 0.1) 28px);
+}
+@keyframes paper-open {
+  0%   { opacity: 0; transform: scale(0.9) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+.letter-paper .letter-header {
+  font-family: "Quicksand", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #b87a90;
+  margin-bottom: 24px;
+}
+.letter-paper .letter-body {
+  font-size: 22px;
+  line-height: 1.5;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+.letter-paper .letter-signature {
+  margin-top: 32px;
+  font-size: 26px;
+  font-style: italic;
+  text-align: right;
+  color: #b87a90;
+}
+.letter-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(180, 140, 160, 0.15);
+  border: none;
+  color: #7a4a55;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.letter-close:hover { background: rgba(180, 140, 160, 0.3); }
+
+/* 🎉 MILESTONE TOAST 🎉 */
+.milestone-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 200;
+  padding: 28px 44px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 180, 200, 0.8);
+  color: #7a4a55;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 30px;
+  font-style: italic;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(255, 140, 170, 0.5);
+  animation: toast-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), toast-fade 4s ease 0.7s forwards;
+  pointer-events: none;
+}
+@keyframes toast-pop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes toast-fade {
+  0%, 60% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
 @media (max-width: 600px) {
   .speech { font-size: 20px; padding: 18px 24px; margin-bottom: 30px; }
   .seal   { width: 72vw; }
   .actions { margin-top: 32px; }
   .actions button { padding: 12px 22px; font-size: 11px; }
   .footer { display: none; }
+  .age-badge { top: 14px; left: 14px; padding: 8px 12px; font-size: 9px; }
+  .sound-btn { top: 14px; right: 14px; width: 40px; height: 40px; }
+  .letter-btn { bottom: 14px; left: 14px; padding: 10px 16px; font-size: 10px; }
+  .letter-paper { padding: 36px 26px; }
+  .letter-paper .letter-body { font-size: 18px; }
+  .milestone-toast { font-size: 22px; padding: 22px 30px; }
 }
