@@ -5,10 +5,10 @@ type Turn = { role: "user" | "assistant"; content: string };
 type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
 
 const SEAL_IMAGES: Record<Mood, string> = {
-  happy: "/images/seal-happy.png",
-  sleepy: "/images/seal-sleepy.png",
-  waiting: "/images/seal-waiting.png",
-  surprised: "/images/seal-surprised.png",
+  happy: "/seal-happy.png",
+sleepy: "/seal-sleepy.png",
+waiting: "/seal-waiting.png",
+surprised: "/seal-surprised.png",
 };
 
 const IDLE_MS = 60_000;
