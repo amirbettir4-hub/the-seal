@@ -130,30 +130,6 @@ html, body, #root {
   50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
 }
 
-/* 🫧 BUBBLES 🫧 */
-.bubbles {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 1;
-}
-.bubble {
-  position: absolute;
-  bottom: -60px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(255, 200, 210, 0.45));
-  box-shadow: inset -2px -2px 6px rgba(255, 180, 200, 0.35), 0 0 12px rgba(255, 200, 220, 0.4);
-  animation: bubble-rise linear infinite;
-  opacity: 0.7;
-}
-@keyframes bubble-rise {
-  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-  10%  { opacity: 0.75; }
-  50%  { transform: translateY(-50vh) translateX(20px) scale(1.05); }
-  100% { transform: translateY(-105vh) translateX(-20px) scale(0.9); opacity: 0; }
-}
-
 /* 💬 SPEECH BUBBLE 💬 */
 .speech {
   position: relative;
@@ -407,7 +383,7 @@ html, body, #root {
   50%      { box-shadow: 0 4px 24px rgba(255, 140, 170, 0.6); }
 }
 
-/* 💌 LETTER MODAL — FULLY OPAQUE, READABLE 💌 */
+/* 💌 LETTER MODAL — READABLE 💌 */
 .letter-overlay {
   position: fixed;
   inset: 0;
@@ -442,7 +418,6 @@ html, body, #root {
   color: #3a2530;
   font-family: "Cormorant Garamond", serif;
   animation: paper-open 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Little paper "tape" at top */
 }
 .letter-paper::before {
   content: "";
@@ -535,6 +510,21 @@ html, body, #root {
 @keyframes toast-fade {
   0%, 60% { opacity: 1; }
   100%    { opacity: 0; }
+}
+
+/* ✨ CURSOR SPARKLES ✨ */
+.sparkle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  font-size: 16px;
+  user-select: none;
+  animation: sparkle-fade 1s ease-out forwards;
+}
+@keyframes sparkle-fade {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
+  40%  { opacity: 1; transform: translate(-50%, -60%) scale(1.1) rotate(60deg); }
+  100% { opacity: 0; transform: translate(-50%, -100%) scale(0.9) rotate(180deg); }
 }
 
 @media (max-width: 600px) {
