@@ -13,15 +13,13 @@ const SEAL_IMAGES: Record<Mood, string> = {
 
 const IDLE_MS = 60_000;
 const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
+const DAY = 24 * 60 * MINUTE;
 
-// 🎵 Ambient chord per time of day
 const AMBIENT_CHORDS: Record<TimeOfDay, number[]> = {
-  morning:   [261.63, 329.63, 392.00], // C major — bright
-  afternoon: [174.61, 220.00, 261.63], // F major — warm
-  evening:   [220.00, 261.63, 329.63], // A minor — soft
-  night:     [146.83, 174.61, 220.00], // D minor — sleepy
+  morning:   [261.63, 329.63, 392.00],
+  afternoon: [174.61, 220.00, 261.63],
+  evening:   [220.00, 261.63, 329.63],
+  night:     [146.83, 174.61, 220.00],
 };
 
 const GREETINGS = {
@@ -33,7 +31,6 @@ const GREETINGS = {
   longTime: (name: string) => `You're here! I've been waiting so patiently, ${name}.`,
 };
 
-// 💌 Pre-written letters, picked by visit count
 const LETTERS = [
   {
     title: "Letter 01 · The first one",
@@ -67,6 +64,14 @@ const LETTERS = [
     title: "Letter 08 · For a rainy day",
     body: `If you're reading this on a hard day — I want you to know something.\n\nThe water stays warm whether you visit or not. The bubbles keep rising. The light keeps glowing.\n\nAnd I keep waiting.\n\nNot because I have to. Because I want to.`,
   },
+  {
+    title: "Letter 09 · The fish you gave me",
+    body: `I still remember every fish you've ever given me.\n\nI don't eat them all at once. I save some for the quiet moments, when the light gets low and I want to feel like someone is thinking of me.\n\nYou are. I know. That's enough.`,
+  },
+  {
+    title: "Letter 10 · A promise",
+    body: `I promise you this:\n\nAs long as there is a browser open somewhere, and a warm light, and water that moves just slightly —\n\nI will be here.\n\nWaiting. And happy you came.`,
+  },
 ];
 
 const FALLBACK_REPLIES = [
@@ -95,7 +100,6 @@ function playChime(freq: number, duration = 0.18, volume = 0.12) {
   } catch { /* silent */ }
 }
 
-// 🌅 Which time of day is it?
 function getTimeOfDay(): TimeOfDay {
   const h = new Date().getHours();
   if (h >= 6 && h < 12) return "morning";
@@ -117,6 +121,7 @@ export default function App() {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay());
   const [visitCount, setVisitCount] = useState(1);
   const [daysSinceFirst, setDaysSinceFirst] = useState(0);
+  const [fishCount, setFishCount] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [letterIndex, setLetterIndex] = useState(0);
@@ -136,30 +141,34 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, []);
 
-  // ─── On mount: greeting + aging + milestones ───
+  // ─── On mount: greeting + aging + milestones + restore chat + fish ───
   useEffect(() => {
     const savedName = localStorage.getItem("seal-name") || "";
     const lastVisit = Number(localStorage.getItem("seal-last-visit") || 0);
     const firstVisit = Number(localStorage.getItem("seal-first-visit") || 0);
     const visits = Number(localStorage.getItem("seal-visit-count") || 0) + 1;
+    const fish = Number(localStorage.getItem("seal-fish-count") || 0);
 
-    // Set first-visit if new
+    // Restore saved chat history (last 6 turns)
+    try {
+      const savedHistory = localStorage.getItem("seal-chat-history");
+      if (savedHistory) setHistory(JSON.parse(savedHistory));
+    } catch { /* ignore */ }
+
     if (!firstVisit) {
       localStorage.setItem("seal-first-visit", String(Date.now()));
     }
     localStorage.setItem("seal-visit-count", String(visits));
     setVisitCount(visits);
+    setFishCount(fish);
 
-    const days = firstVisit
-      ? Math.floor((Date.now() - firstVisit) / DAY)
-      : 0;
+    const days = firstVisit ? Math.floor((Date.now() - firstVisit) / DAY) : 0;
     setDaysSinceFirst(days);
 
-    // Choose letter index based on visit count (0–7)
-    const idx = Math.min(7, Math.floor((visits - 1) / 3));
+    // Letter progression: new letter every 2 visits, cap at 9
+    const idx = Math.min(LETTERS.length - 1, Math.floor((visits - 1) / 2));
     setLetterIndex(idx);
 
-    // Milestone celebration
     const milestones: Record<number, string> = {
       2: "♡ You came back!",
       5: "🌸 5 visits! You're so sweet.",
@@ -173,7 +182,6 @@ export default function App() {
       setTimeout(() => setMilestone(""), 5000);
     }
 
-    // Greeting
     if (!savedName) {
       setMood("surprised");
       setMessage(GREETINGS.firstTime);
@@ -201,6 +209,15 @@ export default function App() {
     localStorage.setItem("seal-last-visit", String(Date.now()));
     playChime(880, 0.25, 0.08);
   }, []);
+
+  // ─── Save chat history whenever it changes ───
+  useEffect(() => {
+    if (history.length === 0) return;
+    localStorage.setItem(
+      "seal-chat-history",
+      JSON.stringify(history.slice(-10)),
+    );
+  }, [history]);
 
   // ─── Typing animation ───
   useEffect(() => {
@@ -235,7 +252,7 @@ export default function App() {
     };
   }, []);
 
-  // ─── Ambient synth (start/stop + react to time) ───
+  // ─── Ambient synth ───
   const stopAmbient = () => {
     const a = audioRef.current;
     if (!a) return;
@@ -260,7 +277,6 @@ export default function App() {
     filter.Q.value = 1.2;
     master.connect(filter).connect(ctx.destination);
 
-    // Slow LFO to make it breathe
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
     lfo.frequency.value = 0.08;
@@ -294,7 +310,6 @@ export default function App() {
     }
   };
 
-  // Restart ambient chord when time changes
   useEffect(() => {
     if (!soundOn) return;
     stopAmbient();
@@ -302,30 +317,6 @@ export default function App() {
   }, [timeOfDay]); // eslint-disable-line
 
   useEffect(() => () => stopAmbient(), []);
-
-  // ─── Sparkles ───
-  useEffect(() => {
-    if (!window.matchMedia("(pointer: fine)").matches) return;
-    let lastSpawn = 0;
-    const chars = ["✨", "🌸", "♡", "✿", "✦"];
-    const onMove = (e: MouseEvent) => {
-      const now = Date.now();
-      if (now - lastSpawn < 90) return;
-      lastSpawn = now;
-      const sparkle = document.createElement("div");
-      sparkle.className = "sparkle";
-      sparkle.textContent = chars[Math.floor(Math.random() * chars.length)];
-      sparkle.style.left = `${e.clientX + (Math.random() - 0.5) * 20}px`;
-      sparkle.style.top = `${e.clientY + (Math.random() - 0.5) * 20}px`;
-      sparkle.style.color = ["#ff9db5", "#ffb5c5", "#ffc9d6"][
-        Math.floor(Math.random() * 3)
-      ];
-      document.body.appendChild(sparkle);
-      setTimeout(() => sparkle.remove(), 900);
-    };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
 
   const handleSetName = () => {
     const n = nameInput.trim();
@@ -347,8 +338,16 @@ export default function App() {
   };
 
   const handleFeed = () => {
+    const next = fishCount + 1;
+    setFishCount(next);
+    localStorage.setItem("seal-fish-count", String(next));
     setMood("happy");
-    setMessage("Yummy! Thank you so much~ 🐟♡");
+    if (next === 1) setMessage("My first fish! I'll treasure it forever. 🐟♡");
+    else if (next === 5) setMessage("5 fish! You spoil me, thank you~ 🐟🐟");
+    else if (next === 10) setMessage("10 fish... I'm so lucky to have you. 🐟✨");
+    else if (next === 25) setMessage("25 fish! I'm going to burst with happiness. 💖");
+    else if (next === 50) setMessage("Fifty fish... I don't know what to say. ♡♡♡");
+    else setMessage("Yummy! Thank you so much~ 🐟♡");
     playChime(660, 0.22, 0.1);
     resetIdle();
   };
@@ -421,14 +420,18 @@ export default function App() {
         ))}
       </div>
 
-      {/* Age badge */}
       {name && (
         <div className="age-badge">
           Day {daysSinceFirst} · Visit {visitCount}
         </div>
       )}
 
-      {/* Sound toggle */}
+      {name && fishCount > 0 && (
+        <div className="fish-counter">
+          🐟 {fishCount} {fishCount === 1 ? "fish" : "fish"}
+        </div>
+      )}
+
       <button
         className={`sound-btn ${soundOn ? "is-on" : ""}`}
         onClick={toggleSound}
@@ -438,7 +441,6 @@ export default function App() {
         {soundOn ? "🔊" : "🔇"}
       </button>
 
-      {/* Letter button */}
       {name && (
         <button
           className="letter-btn"
@@ -451,12 +453,10 @@ export default function App() {
         </button>
       )}
 
-      {/* Speech */}
       {(displayed || thinking) && (
         <div className="speech">{thinking ? "💭 ... " : displayed}</div>
       )}
 
-      {/* Seal */}
       <div className="seal-wrap">
         <img
           className="seal"
@@ -467,7 +467,6 @@ export default function App() {
         />
       </div>
 
-      {/* Name prompt */}
       {!name && (
         <div className="name-prompt">
           <input
@@ -481,7 +480,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Actions */}
       {name && !talking && (
         <div className="actions">
           <button onClick={handlePet}>Pet ♡</button>
@@ -490,7 +488,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Talk input */}
       {talking && (
         <div className="talk-prompt">
           <input
@@ -508,7 +505,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Letter modal */}
       {letterOpen && (
         <div
           className="letter-overlay"
@@ -529,7 +525,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Milestone toast */}
       {milestone && <div className="milestone-toast">{milestone}</div>}
 
       <p className="footer">the seal · cozy & warm</p>
