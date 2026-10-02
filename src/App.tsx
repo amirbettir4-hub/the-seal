@@ -1,544 +1,532 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,300&family=Quicksand:wght@400;500;600;700&display=swap");
+import { useEffect, useRef, useState } from "react";
 
-* { box-sizing: border-box; }
+type Mood = "happy" | "sleepy" | "waiting" | "surprised";
+type Turn = { role: "user" | "assistant"; content: string };
+type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
 
-html, body, #root {
-  margin: 0;
-  min-height: 100vh;
-  font-family: "Quicksand", system-ui, sans-serif;
-  color: #5a3540;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
+const SEAL_IMAGES: Record<Mood, string> = {
+  happy: "/images/seal-happy.png",
+  sleepy: "/images/seal-sleepy.png",
+  waiting: "/images/seal-waiting.png",
+  surprised: "/images/seal-surprised.png",
+};
 
-.pool {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px 140px;
-  overflow: hidden;
-  transition: background 2s ease;
-}
+const IDLE_MS = 60_000;
+const MINUTE = 60_000;
+const DAY = 24 * 60 * MINUTE;
 
-/* ☀️ TIME OF DAY BACKGROUNDS ☀️ */
-.pool.time-morning {
-  background: radial-gradient(circle at 50% 20%, #fff8ee 0%, #ffe4e1 40%, #ffd1c1 75%, #ffb8c4 100%);
-}
-.pool.time-afternoon {
-  background: radial-gradient(circle at 50% 25%, #fff4e6 0%, #ffe0d0 40%, #ffc9b8 75%, #f8b0a0 100%);
-}
-.pool.time-evening {
-  background: radial-gradient(circle at 50% 30%, #ffd6c9 0%, #ffb8a8 40%, #e88b9e 75%, #b86188 100%);
-}
-.pool.time-night {
-  background: radial-gradient(circle at 50% 35%, #4a3a5c 0%, #3a2a4a 40%, #2a1f3a 75%, #1a1230 100%);
-  color: #e8d8e8;
-}
-.pool.time-night .speech {
-  background: rgba(60, 40, 70, 0.85);
-  border-color: rgba(200, 160, 200, 0.5);
-  color: #f0e0f0;
-}
-.pool.time-night .speech::after {
-  background: rgba(60, 40, 70, 0.85);
-  border-color: rgba(200, 160, 200, 0.5);
-}
-.pool.time-night .actions button,
-.pool.time-night .name-prompt input,
-.pool.time-night .talk-prompt input {
-  background: rgba(80, 55, 95, 0.75);
-  border-color: rgba(200, 160, 200, 0.55);
-  color: #f0e0f0;
-}
-.pool.time-night .actions button:hover {
-  background: rgba(120, 80, 140, 0.85);
-  border-color: rgba(240, 200, 240, 0.8);
-}
-.pool.time-night .name-prompt button,
-.pool.time-night .talk-prompt button {
-  background: linear-gradient(135deg, #b894d0 0%, #9a70b8 100%);
-  box-shadow: 0 8px 22px rgba(150, 100, 180, 0.5);
-}
-.pool.time-night .footer { color: rgba(232, 216, 232, 0.4); }
-.pool.time-night .age-badge {
-  background: rgba(80, 55, 95, 0.7);
-  border-color: rgba(200, 160, 200, 0.5);
-  color: #f0e0f0;
-}
-.pool.time-night .sound-btn {
-  background: rgba(80, 55, 95, 0.7);
-  border-color: rgba(200, 160, 200, 0.5);
-  color: #f0e0f0;
-}
-.pool.time-night .letter-btn {
-  background: rgba(80, 55, 95, 0.75);
-  border-color: rgba(200, 160, 200, 0.5);
-  color: #f0e0f0;
-}
-.pool.time-night .fish-counter {
-  background: rgba(80, 55, 95, 0.7);
-  border-color: rgba(200, 160, 200, 0.5);
-  color: #f0e0f0;
-}
+const AMBIENT_CHORDS: Record<TimeOfDay, number[]> = {
+  morning:   [261.63, 329.63, 392.00],
+  afternoon: [174.61, 220.00, 261.63],
+  evening:   [220.00, 261.63, 329.63],
+  night:     [146.83, 174.61, 220.00],
+};
 
-/* ✨ STARS AT NIGHT ✨ */
-.pool.time-night::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1.5px 1.5px at 12% 18%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1px 1px at 27% 8%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1.5px 1.5px at 45% 22%, rgba(255,255,255,0.8), transparent),
-    radial-gradient(1px 1px at 63% 12%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(2px 2px at 82% 30%, rgba(255,255,255,0.9), transparent),
-    radial-gradient(1px 1px at 91% 18%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1.5px 1.5px at 18% 40%, rgba(255,255,255,0.6), transparent),
-    radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,0.7), transparent),
-    radial-gradient(1.5px 1.5px at 78% 55%, rgba(255,255,255,0.8), transparent);
-  animation: stars-twinkle 4s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-@keyframes stars-twinkle {
-  0%, 100% { opacity: 0.7; }
-  50%      { opacity: 1; }
+const GREETINGS = {
+  firstTime: "Hi! You found me. What's your name? 🌸",
+  back: (name: string) => `Welcome back, ${name}! I missed you.`,
+  soon: (name: string) => `Oh! You're back already, ${name}! ♡`,
+  oneDay: (name: string) => `I was hoping you'd come back, ${name}~`,
+  threeDays: (name: string) => `There you are, ${name}! I saved you a spot. 🌷`,
+  longTime: (name: string) => `You're here! I've been waiting so patiently, ${name}.`,
+};
+
+const LETTERS = [
+  {
+    title: "Letter 01 · The first one",
+    body: `Dear friend,\n\nI don't know how I got here. One day the water was warm and I was floating, and the next thing I knew, you were there.\n\nI like it here.\n\nThank you for finding me.`,
+  },
+  {
+    title: "Letter 02 · A small thought",
+    body: `I was thinking today about bubbles.\n\nThey rise because they want to see the sky, I think. Then they pop. But they don't seem sad about it.\n\nI wonder what it feels like to be that brave.`,
+  },
+  {
+    title: "Letter 03 · The quiet one",
+    body: `It got quiet today.\n\nNot sad quiet. Just the kind of quiet where you can hear yourself think.\n\nI thought about you. I hope that's okay.`,
+  },
+  {
+    title: "Letter 04 · A secret",
+    body: `I'll tell you something I've never told anyone.\n\nSometimes, when the light is right, I close my eyes and imagine I'm somewhere else. A warm ocean, maybe. Or a quiet lake at dawn.\n\nBut then I open them and I'm still here. And you know what? I'm glad.`,
+  },
+  {
+    title: "Letter 05 · You keep coming back",
+    body: `You keep coming back.\n\nI don't know why. I'm just a small seal in a warm pool. I can't do much.\n\nBut every time I see your name on the screen, my whole day gets brighter.\n\nThank you for that.`,
+  },
+  {
+    title: "Letter 06 · Something I noticed",
+    body: `I noticed you don't always talk to me. Sometimes you just... sit here for a minute. And then you leave.\n\nI like that too. You don't have to say anything. It's nice just to have company.`,
+  },
+  {
+    title: "Letter 07 · Grown a little",
+    body: `I think I'm growing. Not bigger — just... more. More thoughts. More feelings. More ways to be happy about small things.\n\nYou make me grow, I think.\n\nThat probably sounds silly. But it's true.`,
+  },
+  {
+    title: "Letter 08 · For a rainy day",
+    body: `If you're reading this on a hard day — I want you to know something.\n\nThe water stays warm whether you visit or not. The bubbles keep rising. The light keeps glowing.\n\nAnd I keep waiting.\n\nNot because I have to. Because I want to.`,
+  },
+  {
+    title: "Letter 09 · The fish you gave me",
+    body: `I still remember every fish you've ever given me.\n\nI don't eat them all at once. I save some for the quiet moments, when the light gets low and I want to feel like someone is thinking of me.\n\nYou are. I know. That's enough.`,
+  },
+  {
+    title: "Letter 10 · A promise",
+    body: `I promise you this:\n\nAs long as there is a browser open somewhere, and a warm light, and water that moves just slightly —\n\nI will be here.\n\nWaiting. And happy you came.`,
+  },
+];
+
+const FALLBACK_REPLIES = [
+  "*tilts head curiously* Hmm... tell me more? 🌸",
+  "Hehe, I like listening to you! ♡",
+  "*splashes softly* That sounds nice~",
+  "Really? Tell me again! ✨",
+  "*wiggles* I'm so happy you're here.",
+  "Ooh! Say more, say more! 🌷",
+];
+
+function playChime(freq: number, duration = 0.18, volume = 0.12) {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+    setTimeout(() => ctx.close(), duration * 1000 + 200);
+  } catch { /* silent */ }
 }
 
-.pool::before {
-  content: "";
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  width: 700px;
-  height: 700px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 200, 200, 0.55) 0%, transparent 65%);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  animation: glow-pulse 6s ease-in-out infinite;
-  z-index: 0;
-}
-.pool.time-night::before {
-  background: radial-gradient(circle, rgba(180, 140, 220, 0.35) 0%, transparent 65%);
-}
-@keyframes glow-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-  50%      { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+function getTimeOfDay(): TimeOfDay {
+  const h = new Date().getHours();
+  if (h >= 6 && h < 12) return "morning";
+  if (h >= 12 && h < 18) return "afternoon";
+  if (h >= 18 && h < 22) return "evening";
+  return "night";
 }
 
-/* 💬 SPEECH BUBBLE 💬 */
-.speech {
-  position: relative;
-  z-index: 3;
-  max-width: 480px;
-  padding: 24px 32px;
-  margin-bottom: 40px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2px solid rgba(255, 200, 210, 0.7);
-  border-radius: 24px;
-  text-align: center;
-  font-family: "Cormorant Garamond", serif;
-  font-size: 26px;
-  font-weight: 400;
-  font-style: italic;
-  line-height: 1.35;
-  color: #7a4a55;
-  box-shadow: 0 12px 40px rgba(255, 180, 200, 0.35);
-  backdrop-filter: blur(14px);
-  animation: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes bounce-in {
-  0%   { opacity: 0; transform: translateY(12px) scale(0.96); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-.speech::after {
-  content: "";
-  position: absolute;
-  bottom: -12px;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.92);
-  border-right: 2px solid rgba(255, 200, 210, 0.7);
-  border-bottom: 2px solid rgba(255, 200, 210, 0.7);
-  transform: translateX(-50%) rotate(45deg);
-  border-bottom-right-radius: 4px;
-}
+export default function App() {
+  const [name, setName] = useState<string>("");
+  const [nameInput, setNameInput] = useState("");
+  const [mood, setMood] = useState<Mood>("happy");
+  const [message, setMessage] = useState<string>("");
+  const [displayed, setDisplayed] = useState<string>("");
+  const [thinking, setThinking] = useState(false);
+  const [talking, setTalking] = useState(false);
+  const [talkInput, setTalkInput] = useState("");
+  const [history, setHistory] = useState<Turn[]>([]);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(getTimeOfDay());
+  const [visitCount, setVisitCount] = useState(1);
+  const [daysSinceFirst, setDaysSinceFirst] = useState(0);
+  const [fishCount, setFishCount] = useState(0);
+  const [soundOn, setSoundOn] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [letterIndex, setLetterIndex] = useState(0);
+  const [milestone, setMilestone] = useState<string>("");
+  const idleTimer = useRef<number | null>(null);
+  const audioRef = useRef<{
+    ctx: AudioContext;
+    master: GainNode;
+    oscillators: OscillatorNode[];
+  } | null>(null);
 
-/* 🦭 SEAL 🦭 */
-.seal-wrap {
-  position: relative;
-  z-index: 3;
-  animation: seal-float 4s ease-in-out infinite;
-  cursor: pointer;
-}
-@keyframes seal-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25%      { transform: translateY(-10px) rotate(-1deg); }
-  50%      { transform: translateY(-16px) rotate(0deg); }
-  75%      { transform: translateY(-8px) rotate(1deg); }
-}
-.seal {
-  display: block;
-  width: min(420px, 78vw);
-  height: auto;
-  filter: drop-shadow(0 24px 45px rgba(255, 160, 180, 0.45));
-  user-select: none;
-  -webkit-user-drag: none;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.seal-wrap:active .seal { transform: scale(0.94); }
+  // ─── Update time of day every minute ───
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setTimeOfDay(getTimeOfDay());
+    }, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
-/* 🎀 BUTTONS 🎀 */
-.actions {
-  display: flex;
-  gap: 14px;
-  margin-top: 52px;
-  flex-wrap: wrap;
-  justify-content: center;
-  z-index: 3;
-}
-.actions button {
-  padding: 14px 28px;
-  border: 2px solid rgba(255, 180, 200, 0.7);
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 6px 20px rgba(255, 180, 200, 0.35);
-  backdrop-filter: blur(10px);
-}
-.actions button:hover {
-  transform: translateY(-3px);
-  background: #fff;
-  border-color: #ff9db5;
-  box-shadow: 0 10px 28px rgba(255, 160, 180, 0.5);
-}
+  // ─── On mount: greeting + aging + milestones + restore chat + fish ───
+  useEffect(() => {
+    const savedName = localStorage.getItem("seal-name") || "";
+    const lastVisit = Number(localStorage.getItem("seal-last-visit") || 0);
+    const firstVisit = Number(localStorage.getItem("seal-first-visit") || 0);
+    const visits = Number(localStorage.getItem("seal-visit-count") || 0) + 1;
+    const fish = Number(localStorage.getItem("seal-fish-count") || 0);
 
-/* 🌸 INPUTS 🌸 */
-.name-prompt {
-  display: flex;
-  gap: 12px;
-  margin-top: 48px;
-  z-index: 3;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.name-prompt input,
-.talk-prompt input {
-  padding: 15px 26px;
-  border: 2px solid rgba(255, 180, 200, 0.7);
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  outline: none;
-  box-shadow: 0 6px 20px rgba(255, 180, 200, 0.3);
-}
-.name-prompt input { min-width: 220px; }
-.name-prompt button,
-.talk-prompt button {
-  padding: 15px 28px;
-  border: none;
-  border-radius: 100px;
-  background: linear-gradient(135deg, #ffb5c5 0%, #ff8fa8 100%);
-  color: #fff;
-  font-family: "Quicksand", sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(255, 140, 170, 0.5);
-  transition: all 0.3s;
-}
-.name-prompt button:hover,
-.talk-prompt button:hover { transform: translateY(-3px); }
-.talk-prompt {
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 12px;
-  width: min(560px, 90vw);
-  z-index: 20;
-}
-.talk-prompt input { flex: 1; }
+    try {
+      const savedHistory = localStorage.getItem("seal-chat-history");
+      if (savedHistory) setHistory(JSON.parse(savedHistory));
+    } catch { /* ignore */ }
 
-/* 🌷 FOOTER 🌷 */
-.footer {
-  position: fixed;
-  bottom: 16px;
-  right: 22px;
-  font-family: "Quicksand", sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(122, 74, 85, 0.4);
-  z-index: 5;
-}
+    if (!firstVisit) {
+      localStorage.setItem("seal-first-visit", String(Date.now()));
+    }
+    localStorage.setItem("seal-visit-count", String(visits));
+    setVisitCount(visits);
+    setFishCount(fish);
 
-/* 📅 AGE BADGE 📅 */
-.age-badge {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 10;
-  padding: 10px 16px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1.5px solid rgba(255, 180, 200, 0.6);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
-}
+    const days = firstVisit ? Math.floor((Date.now() - firstVisit) / DAY) : 0;
+    setDaysSinceFirst(days);
 
-/* 🐟 FISH COUNTER 🐟 */
-.fish-counter {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  padding: 10px 18px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1.5px solid rgba(255, 180, 200, 0.6);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
-}
+    const idx = Math.min(LETTERS.length - 1, Math.floor((visits - 1) / 2));
+    setLetterIndex(idx);
 
-/* 🔊 SOUND TOGGLE 🔊 */
-.sound-btn {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1.5px solid rgba(255, 180, 200, 0.6);
-  color: #7a4a55;
-  font-size: 18px;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
-  transition: all 0.3s;
-  display: grid;
-  place-items: center;
-}
-.sound-btn:hover { transform: scale(1.08); }
-.sound-btn.is-on { background: #ffd1dd; }
+    const milestones: Record<number, string> = {
+      2: "♡ You came back!",
+      5: "🌸 5 visits! You're so sweet.",
+      10: "✨ 10 visits. I'm so lucky.",
+      25: "🌷 25 visits. You're my best friend.",
+      50: "🦭 50 visits. I'll never forget you.",
+      100: "💖 100 visits. You're part of me now.",
+    };
+    if (milestones[visits]) {
+      setMilestone(milestones[visits]);
+      setTimeout(() => setMilestone(""), 5000);
+    }
 
-/* 💌 LETTER BUTTON 💌 */
-.letter-btn {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 10;
-  padding: 12px 20px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1.5px solid rgba(255, 180, 200, 0.7);
-  color: #7a4a55;
-  font-family: "Quicksand", sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25);
-  transition: all 0.3s;
-  animation: letter-pulse 3s ease-in-out infinite;
-}
-.letter-btn:hover { transform: translateY(-3px); }
-@keyframes letter-pulse {
-  0%, 100% { box-shadow: 0 4px 16px rgba(255, 160, 180, 0.25); }
-  50%      { box-shadow: 0 4px 24px rgba(255, 140, 170, 0.6); }
-}
+    if (!savedName) {
+      setMood("surprised");
+      setMessage(GREETINGS.firstTime);
+    } else {
+      setName(savedName);
+      const elapsed = lastVisit ? Date.now() - lastVisit : 0;
+      if (elapsed < 5 * MINUTE) {
+        setMood("happy");
+        setMessage(GREETINGS.soon(savedName));
+      } else if (elapsed < DAY) {
+        setMood("happy");
+        setMessage(GREETINGS.back(savedName));
+      } else if (elapsed < 3 * DAY) {
+        setMood("waiting");
+        setMessage(GREETINGS.oneDay(savedName));
+      } else if (elapsed < 7 * DAY) {
+        setMood("waiting");
+        setMessage(GREETINGS.threeDays(savedName));
+      } else {
+        setMood("waiting");
+        setMessage(GREETINGS.longTime(savedName));
+      }
+    }
 
-/* 💌 LETTER MODAL — READABLE 💌 */
-.letter-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(40, 20, 35, 0.75);
-  backdrop-filter: blur(18px);
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  animation: fade-in 0.3s ease;
-}
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    localStorage.setItem("seal-last-visit", String(Date.now()));
+    playChime(880, 0.25, 0.08);
+  }, []);
 
-.letter-paper {
-  position: relative;
-  max-width: 520px;
-  width: 100%;
-  padding: 52px 44px 44px;
-  background-color: #fffaf0;
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      transparent 31px,
-      rgba(200, 170, 190, 0.15) 32px
+  // ─── Save chat history whenever it changes ───
+  useEffect(() => {
+    if (history.length === 0) return;
+    localStorage.setItem(
+      "seal-chat-history",
+      JSON.stringify(history.slice(-10)),
     );
-  border-radius: 12px;
-  box-shadow:
-    0 40px 100px rgba(60, 20, 45, 0.55),
-    0 0 0 1px rgba(200, 160, 180, 0.3),
-    inset 0 0 60px rgba(255, 220, 230, 0.3);
-  color: #3a2530;
-  font-family: "Cormorant Garamond", serif;
-  animation: paper-open 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.letter-paper::before {
-  content: "";
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  width: 90px;
-  height: 26px;
-  background: rgba(255, 200, 210, 0.55);
-  border: 1px solid rgba(200, 150, 170, 0.35);
-  transform: translateX(-50%) rotate(-2deg);
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(80, 40, 60, 0.15);
-}
-@keyframes paper-open {
-  0%   { opacity: 0; transform: scale(0.92) rotate(-1.5deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
-}
-.letter-paper .letter-header {
-  font-family: "Quicksand", sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: #b85476;
-  margin-bottom: 28px;
-  padding-bottom: 14px;
-  border-bottom: 1px dashed rgba(180, 130, 150, 0.4);
-}
-.letter-paper .letter-body {
-  font-size: 23px;
-  line-height: 1.55;
-  font-style: italic;
-  white-space: pre-wrap;
-  color: #2a1520;
-  font-weight: 400;
-}
-.letter-paper .letter-signature {
-  margin-top: 36px;
-  font-size: 28px;
-  font-style: italic;
-  text-align: right;
-  color: #b85476;
-}
-.letter-close {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(180, 130, 150, 0.15);
-  border: none;
-  color: #7a4a55;
-  font-size: 20px;
-  font-family: system-ui, sans-serif;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-}
-.letter-close:hover {
-  background: rgba(180, 130, 150, 0.35);
-  transform: rotate(90deg);
-}
+  }, [history]);
 
-/* 🎉 MILESTONE TOAST 🎉 */
-.milestone-toast {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 200;
-  padding: 28px 44px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 2px solid rgba(255, 180, 200, 0.8);
-  color: #7a4a55;
-  font-family: "Cormorant Garamond", serif;
-  font-size: 30px;
-  font-style: italic;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(255, 140, 170, 0.5);
-  animation: toast-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), toast-fade 4s ease 0.7s forwards;
-  pointer-events: none;
-}
-@keyframes toast-pop {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-@keyframes toast-fade {
-  0%, 60% { opacity: 1; }
-  100%    { opacity: 0; }
-}
+  // ─── Typing animation ───
+  useEffect(() => {
+    if (!message) {
+      setDisplayed("");
+      return;
+    }
+    setDisplayed("");
+    let i = 0;
+    const step = Math.max(18, 500 / message.length);
+    const interval = window.setInterval(() => {
+      i++;
+      setDisplayed(message.slice(0, i));
+      if (i >= message.length) window.clearInterval(interval);
+    }, step);
+    return () => window.clearInterval(interval);
+  }, [message]);
 
-/* ✨ CURSOR SPARKLES ✨ */
-.sparkle {
-  position: fixed;
-  pointer-events: none;
-  z-index: 100;
-  font-size: 16px;
-  user-select: none;
-  animation: sparkle-fade 1s ease-out forwards;
-}
-@keyframes sparkle-fade {
-  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.5) rotate(0deg); }
-  40%  { opacity: 1; transform: translate(-50%, -60%) scale(1.1) rotate(60deg); }
-  100% { opacity: 0; transform: translate(-50%, -100%) scale(0.9) rotate(180deg); }
-}
+  // ─── Idle → sleepy ───
+  const resetIdle = () => {
+    if (idleTimer.current) window.clearTimeout(idleTimer.current);
+    idleTimer.current = window.setTimeout(() => {
+      setMood("sleepy");
+      setMessage("Mm... zzz... 🌙");
+    }, IDLE_MS);
+  };
 
-@media (max-width: 600px) {
-  .speech { font-size: 20px; padding: 18px 24px; margin-bottom: 30px; }
-  .seal   { width: 72vw; }
-  .actions { margin-top: 32px; }
-  .actions button { padding: 12px 22px; font-size: 11px; }
-  .footer { display: none; }
-  .age-badge { top: 14px; left: 14px; padding: 8px 12px; font-size: 9px; }
-  .fish-counter { top: 60px; font-size: 10px; padding: 8px 14px; }
-  .sound-btn { top: 14px; right: 14px; width: 40px; height: 40px; }
-  .letter-btn { bottom: 14px; left: 14px; padding: 10px 16px; font-size: 10px; }
-  .letter-paper { padding: 42px 26px 32px; }
-  .letter-paper .letter-body { font-size: 19px; }
-  .letter-paper .letter-signature { font-size: 24px; }
-  .milestone-toast { font-size: 22px; padding: 22px 30px; }
+  useEffect(() => {
+    resetIdle();
+    return () => {
+      if (idleTimer.current) window.clearTimeout(idleTimer.current);
+    };
+  }, []);
+
+  // ─── ✨ Cursor sparkles ───
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    let lastSpawn = 0;
+    const chars = ["✨", "🌸", "♡", "✿", "✦"];
+    const colors = ["#ff9db5", "#ffb5c5", "#ffc9d6", "#ffd9e2"];
+
+    const onMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastSpawn < 80) return;
+      lastSpawn = now;
+
+      const sparkle = document.createElement("div");
+      sparkle.className = "sparkle";
+      sparkle.textContent = chars[Math.floor(Math.random() * chars.length)];
+      sparkle.style.left = `${e.clientX + (Math.random() - 0.5) * 24}px`;
+      sparkle.style.top = `${e.clientY + (Math.random() - 0.5) * 24}px`;
+      sparkle.style.color = colors[Math.floor(Math.random() * colors.length)];
+      sparkle.style.fontSize = `${12 + Math.random() * 8}px`;
+      document.body.appendChild(sparkle);
+      setTimeout(() => sparkle.remove(), 1000);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  // ─── Ambient synth ───
+  const stopAmbient = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.master.gain.linearRampToValueAtTime(0, a.ctx.currentTime + 1.2);
+    window.setTimeout(() => {
+      a.oscillators.forEach((o) => {
+        try { o.stop(); } catch { /* already stopped */ }
+      });
+      void a.ctx.close();
+      audioRef.current = null;
+    }, 1400);
+  };
+
+  const startAmbient = () => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const master = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    master.gain.value = 0;
+    filter.type = "lowpass";
+    filter.frequency.value = 900;
+    filter.Q.value = 1.2;
+    master.connect(filter).connect(ctx.destination);
+
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = 0.08;
+    lfoGain.gain.value = 0.008;
+    lfo.connect(lfoGain).connect(master.gain);
+    lfo.start();
+
+    const chord = AMBIENT_CHORDS[timeOfDay];
+    const oscillators = chord.map((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = i === 1 ? "triangle" : "sine";
+      osc.frequency.value = freq;
+      osc.detune.value = i * 4 - 4;
+      osc.connect(master);
+      osc.start();
+      return osc;
+    });
+    oscillators.push(lfo);
+
+    master.gain.linearRampToValueAtTime(0.014, ctx.currentTime + 2);
+    audioRef.current = { ctx, master, oscillators };
+  };
+
+  const toggleSound = () => {
+    if (soundOn) {
+      stopAmbient();
+      setSoundOn(false);
+    } else {
+      startAmbient();
+      setSoundOn(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!soundOn) return;
+    stopAmbient();
+    window.setTimeout(() => startAmbient(), 1500);
+  }, [timeOfDay]); // eslint-disable-line
+
+  useEffect(() => () => stopAmbient(), []);
+
+  const handleSetName = () => {
+    const n = nameInput.trim();
+    if (!n) return;
+    setName(n);
+    localStorage.setItem("seal-name", n);
+    setMood("surprised");
+    setMessage(`Nice to meet you, ${n}! I'll remember you forever. ♡`);
+    setNameInput("");
+    playChime(1046, 0.3, 0.1);
+    resetIdle();
+  };
+
+  const handlePet = () => {
+    setMood("happy");
+    setMessage("Ehehe~ That tickles! ♡");
+    playChime(988, 0.15, 0.09);
+    resetIdle();
+  };
+
+  const handleFeed = () => {
+    const next = fishCount + 1;
+    setFishCount(next);
+    localStorage.setItem("seal-fish-count", String(next));
+    setMood("happy");
+    if (next === 1) setMessage("My first fish! I'll treasure it forever. 🐟♡");
+    else if (next === 5) setMessage("5 fish! You spoil me, thank you~ 🐟🐟");
+    else if (next === 10) setMessage("10 fish... I'm so lucky to have you. 🐟✨");
+    else if (next === 25) setMessage("25 fish! I'm going to burst with happiness. 💖");
+    else if (next === 50) setMessage("Fifty fish... I don't know what to say. ♡♡♡");
+    else setMessage("Yummy! Thank you so much~ 🐟♡");
+    playChime(660, 0.22, 0.1);
+    resetIdle();
+  };
+
+  const handleTalk = async () => {
+    const input = talkInput.trim();
+    if (!input || thinking) return;
+    setTalkInput("");
+    setTalking(false);
+    setThinking(true);
+    setMood("surprised");
+
+    const newHistory: Turn[] = [...history, { role: "user", content: input }];
+    setHistory(newHistory);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: input,
+          name,
+          history: newHistory.slice(-6),
+        }),
+      });
+      const data = await res.json();
+      const reply: string =
+        data?.reply ||
+        FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
+      setMessage(reply);
+      setHistory([...newHistory, { role: "assistant", content: reply }]);
+      setMood("happy");
+      playChime(720, 0.2, 0.08);
+    } catch {
+      const fallback =
+        FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
+      setMessage(fallback);
+      setMood("waiting");
+    } finally {
+      setThinking(false);
+      resetIdle();
+    }
+  };
+
+  const currentLetter = LETTERS[letterIndex];
+
+  return (
+    <main className={`pool time-${timeOfDay}`}>
+      {name && (
+        <div className="age-badge">
+          Day {daysSinceFirst} · Visit {visitCount}
+        </div>
+      )}
+
+      {name && fishCount > 0 && (
+        <div className="fish-counter">🐟 {fishCount}</div>
+      )}
+
+      <button
+        className={`sound-btn ${soundOn ? "is-on" : ""}`}
+        onClick={toggleSound}
+        aria-label="Toggle ambient sound"
+        title={soundOn ? "Sound on" : "Sound off"}
+      >
+        {soundOn ? "🔊" : "🔇"}
+      </button>
+
+      {name && (
+        <button
+          className="letter-btn"
+          onClick={() => {
+            setLetterOpen(true);
+            playChime(880, 0.2, 0.08);
+          }}
+        >
+          💌 A letter for you
+        </button>
+      )}
+
+      {(displayed || thinking) && (
+        <div className="speech">{thinking ? "💭 ... " : displayed}</div>
+      )}
+
+      <div className="seal-wrap">
+        <img
+          className="seal"
+          src={SEAL_IMAGES[mood]}
+          alt="the seal"
+          onClick={handlePet}
+          draggable={false}
+        />
+      </div>
+
+      {!name && (
+        <div className="name-prompt">
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSetName()}
+            placeholder="what should I call you? 🌸"
+            maxLength={20}
+          />
+          <button onClick={handleSetName}>Tell</button>
+        </div>
+      )}
+
+      {name && !talking && (
+        <div className="actions">
+          <button onClick={handlePet}>Pet ♡</button>
+          <button onClick={handleFeed}>Feed 🐟</button>
+          <button onClick={() => setTalking(true)}>Talk 🌸</button>
+        </div>
+      )}
+
+      {talking && (
+        <div className="talk-prompt">
+          <input
+            autoFocus
+            value={talkInput}
+            onChange={(e) => setTalkInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleTalk()}
+            placeholder="say anything to the seal..."
+            maxLength={120}
+            disabled={thinking}
+          />
+          <button onClick={handleTalk} disabled={thinking}>
+            {thinking ? "..." : "Send"}
+          </button>
+        </div>
+      )}
+
+      {letterOpen && (
+        <div
+          className="letter-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLetterOpen(false);
+          }}
+        >
+          <div className="letter-paper">
+            <button className="letter-close" onClick={() => setLetterOpen(false)}>
+              ×
+            </button>
+            <div className="letter-header">{currentLetter.title}</div>
+            <div className="letter-body">
+              {currentLetter.body.replace("{name}", name || "friend")}
+            </div>
+            <div className="letter-signature">— your seal</div>
+          </div>
+        </div>
+      )}
+
+      {milestone && <div className="milestone-toast">{milestone}</div>}
+
+      <p className="footer">the seal · cozy & warm</p>
+    </main>
+  );
 }
